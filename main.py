@@ -27,29 +27,29 @@ def update(restart=False):
     song_length_converted = datetime.timedelta(seconds=int(song_length))
     if pygame.mixer.music.get_pos() / 1000 < 0 or restart:
         current_time = 0
-        song_control.config(to=song_length, value=current_time)
+        time_control.config(to=song_length, value=current_time)
         if restart:
             play_btn.config(image=pause_img)
         else:
             play_btn.config(image=play_img)
         current_time_converted = datetime.timedelta(seconds=current_time)
-        current_song_second.config(text=current_time_converted)
+        current_second_label.config(text=current_time_converted)
         return
-    elif int(song_control.get()) == int(current_time):
-        song_control.config(to=song_length, value=current_time)
+    elif int(time_control.get()) == int(current_time):
+        time_control.config(to=song_length, value=current_time)
     else:
-        song_control.config(to=song_length, value=song_control.get())
-        current_time_converted = datetime.timedelta(seconds=int(song_control.get()))
-        current_song_second.config(text=current_time_converted)
+        time_control.config(to=song_length, value=time_control.get())
+        current_time_converted = datetime.timedelta(seconds=int(time_control.get()))
+        current_second_label.config(text=current_time_converted)
         song_length_label.config(text=song_length_converted)
-        next_time = song_control.get() + 1
-        song_control.config(value=next_time)
-    song_control.after(1200, update)
+        next_time = time_control.get() + 1
+        time_control.config(value=next_time)
+    time_control.after(1200, update)
 
 
 def slide(x):
     try:
-        pygame.mixer.music.play(loops=0, start=song_control.get())
+        pygame.mixer.music.play(loops=0, start=time_control.get())
     except pygame.error:
         pass
 
@@ -174,8 +174,8 @@ label_0 = ttk.Label(tk, text="0", background="white")
 label_100 = ttk.Label(tk, text="100", background="white")
 volume_control = ttk.Scale(tk, from_=0, to=100, style="TScale", orient=VERTICAL, value=100, length=145,
                            command=lambda x: pygame.mixer.music.set_volume(volume_control.get() / 100))
-song_control = ttk.Scale(tk, from_=0, style="TScale", command=slide, length=350)
-current_song_second = ttk.Label(tk, text="00:00", background="white")
+time_control = ttk.Scale(tk, from_=0, style="TScale", command=slide, length=350)
+current_second_label = ttk.Label(tk, text="00:00", background="white")
 song_length_label = ttk.Label(tk, text="00:00", background="white")
 
 del_btn.place(x=90, y=0)
@@ -189,8 +189,8 @@ volume_label.place(x=450, y=0)
 label_0.place(x=468, y=20)
 label_100.place(x=460, y=180)
 volume_control.place(x=460, y=35)
-song_control.place(x=50, y=200)
-current_song_second.place(x=10, y=203)
+time_control.place(x=50, y=200)
+current_second_label.place(x=10, y=203)
 song_length_label.place(x=404, y=203)
 
 
