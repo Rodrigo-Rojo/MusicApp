@@ -5,6 +5,10 @@ from tkinter import filedialog, ttk
 from mutagen.mp3 import MP3
 import pygame
 import os
+from moviepy.editor import *
+from pytube import YouTube
+from pyyoutube import Api
+
 # <a href="https://www.flaticon.com/free-icons/ui" title="ui icons">Ui icons created by pictranoosa - Flaticon</a>
 
 tk = Tk()
@@ -13,6 +17,7 @@ tk.geometry("500x310")
 tk.configure(bg="white")
 tk.resizable(False, False)
 pygame.mixer.init()
+API_KEY = "AIzaSyA82pzJpJMQ9mWS1TrFDRtjGAcw6ZhMCWM"
 songs = []
 songs_path = []
 pause = False
@@ -150,6 +155,63 @@ def stop_song():
     pygame.mixer.music.stop()
 
 
+def add_song_from_yt(youtube_ids):
+    global listbox
+    for yt_id in youtube_ids:
+        yt = YouTube(f"https://www.youtube.com/watch?v={yt_id}")
+        itag = yt.streams.filter(only_audio=True)[0].itag
+        yt = yt.streams.get_by_itag(itag)
+        yt_song = yt.download()
+        snd = AudioFileClip(yt_song)
+        song_name = f"audio/{os.path.basename(yt_song)[:-4]}.mp3"
+        snd.write_audiofile(filename=song_name)
+        songs_path.append(song_name)
+        songs.append(os.path.basename(song_name))
+        os.remove(yt_song)
+    listbox = Listbox(tk, bg="black", fg="#9ad1ec", width=72, height=10, listvariable=StringVar(value=songs),
+                      selectmode=SINGLE)
+    listbox.select_set(0)
+    listbox.place(x=10, y=30)
+
+
+def handle_add():
+    global search_box, yt_window
+    selected_songs.append(search_box.curselection())
+    yt_window.destroy()
+    add_yt_songs()
+
+
+def open_win(video_list):
+    global selected_songs, search_box, yt_window
+    selected_songs = []
+    yt_window = Toplevel(tk)
+    yt_window.geometry("750x250")
+    yt_window.title("New Window")
+    search_box = Listbox(yt_window, bg="black", fg="#9ad1ec", width=72, height=10,
+                         listvariable=StringVar(value=video_list), selectmode=EXTENDED)
+    search_box.pack()
+    add = Button(yt_window, text="Add Songs", command=handle_add)
+    add.pack()
+
+
+def search_song():
+    video_list = []
+    api = Api(api_key=API_KEY)
+    search = api.search_by_keywords(q=search_entry.get(), count=10)
+    for video in search.items:
+        video_list.append(video.snippet.title)
+    open_win(video_list)
+
+
+def add_yt_songs():
+    global selected_songs
+    print(selected_songs)
+    api = Api(api_key=API_KEY)
+    search = api.search_by_keywords(q=search_entry.get(), count=10)
+    yt_ids = [search.items[i].id.videoId for i in selected_songs[0]]
+    add_song_from_yt(yt_ids)
+
+
 play_img = ImageTk.PhotoImage(Image.open("img/play.png"))
 pause_img = ImageTk.PhotoImage(Image.open("img/pause.png"))
 stop_img = ImageTk.PhotoImage(Image.open("img/stop.png"))
@@ -161,12 +223,13 @@ listbox = Listbox(tk, bg="black", fg="#9ad1ec", width=72,
                   height=10, selectmode=SINGLE)
 style = ttk.Style()
 style.configure("TButton", padding=0, background="#ffffff", borderwidth=0)
-add_btn = ttk.Button(tk, text="Add song", command=add_song)
+add_btn = ttk.Button(tk, text="Add song", command=add_song_from_yt)
 del_btn = ttk.Button(tk, text="Delete song", command=delete_song)
 play_btn = ttk.Button(tk, image=play_img, command=play, style="TButton")
 stop_btn = ttk.Button(tk, image=stop_img, command=stop_song)
 previous_btn = ttk.Button(tk, image=previous_img, command=previous_song)
 next_btn = ttk.Button(tk, image=next_img, command=next_song)
+search_btn = ttk.Button(tk, text="search", command=search_song)
 style = ttk.Style()
 style.configure("TScale", background="white")
 volume_label = ttk.Label(tk, text="Volume", background="white")
@@ -177,9 +240,12 @@ volume_control = ttk.Scale(tk, from_=0, to=100, style="TScale", orient=VERTICAL,
 time_control = ttk.Scale(tk, from_=0, style="TScale", command=slide, length=350)
 current_second_label = ttk.Label(tk, text="00:00", background="white")
 song_length_label = ttk.Label(tk, text="00:00", background="white")
+search_entry = ttk.Entry(tk)
 
 del_btn.place(x=90, y=0)
 add_btn.place(x=10, y=0)
+search_entry.place(x=170, y=0)
+search_btn.place(x=300, y=0)
 listbox.place(x=10, y=30)
 play_btn.place(x=160, y=230)
 stop_btn.place(x=260, y=230)
