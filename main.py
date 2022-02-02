@@ -4,7 +4,6 @@ from PIL import Image, ImageTk
 from tkinter import filedialog, ttk
 from mutagen.mp3 import MP3
 import pygame
-import os
 from moviepy.editor import *
 from pytube import YouTube
 from pyyoutube import Api
@@ -13,13 +12,13 @@ from pyyoutube import Api
 
 tk = Tk()
 tk.title("Music App")
-tk.geometry("500x310")
+tk.geometry("600x310")
 tk.configure(bg="white")
 tk.resizable(False, False)
 pygame.mixer.init()
 API_KEY = "AIzaSyA82pzJpJMQ9mWS1TrFDRtjGAcw6ZhMCWM"
-songs = []
-songs_path = []
+songs = [file for file in os.listdir("audio")]
+songs_path = [os.path.abspath(f"audio/{file}") for file in os.listdir("audio")]
 pause = False
 song = ""
 
@@ -159,15 +158,15 @@ def add_song_from_yt(youtube_ids):
     global listbox
     for yt_id in youtube_ids:
         yt = YouTube(f"https://www.youtube.com/watch?v={yt_id}")
-        itag = yt.streams.filter(only_audio=True)[0].itag
+        itag = yt.streams.filter(only_audio=True)[-1].itag
         yt = yt.streams.get_by_itag(itag)
         yt_song = yt.download()
-        snd = AudioFileClip(yt_song)
-        song_name = f"audio/{os.path.basename(yt_song)[:-4]}.mp3"
-        snd.write_audiofile(filename=song_name)
-        songs_path.append(song_name)
-        songs.append(os.path.basename(song_name))
-        os.remove(yt_song)
+        # snd = AudioFileClip(yt_song)
+        # song_name = f"audio/{os.path.basename(yt_song)[:-4]}.mp3"
+        # snd.write_audiofile(filename=song_name)
+        songs_path.append(yt_song)
+        songs.append(os.path.basename(yt_song))
+        # os.remove(yt_song)
     listbox = Listbox(tk, bg="black", fg="#9ad1ec", width=72, height=10, listvariable=StringVar(value=songs),
                       selectmode=SINGLE)
     listbox.select_set(0)
@@ -185,16 +184,18 @@ def open_win(video_list):
     global selected_songs, search_box, yt_window
     selected_songs = []
     yt_window = Toplevel(tk)
-    yt_window.geometry("750x250")
+    yt_window.geometry("500x200")
     yt_window.title("New Window")
     search_box = Listbox(yt_window, bg="black", fg="#9ad1ec", width=72, height=10,
                          listvariable=StringVar(value=video_list), selectmode=EXTENDED)
     search_box.pack()
     add = Button(yt_window, text="Add Songs", command=handle_add)
-    add.pack()
+    quit = Button(yt_window, text="Quit", command=yt_window.destroy)
+    quit.place(x=250, y=170)
+    add.place(x=150, y=170)
 
 
-def search_song():
+def search_song(event=None):
     video_list = []
     api = Api(api_key=API_KEY)
     search = api.search_by_keywords(q=search_entry.get(), count=10)
@@ -218,46 +219,67 @@ stop_img = ImageTk.PhotoImage(Image.open("img/stop.png"))
 previous_img = ImageTk.PhotoImage(Image.open("img/previous.png"))
 next_img = ImageTk.PhotoImage(Image.open("img/next.png"))
 
+add_btn = ttk.Button(tk, text="Add song", command=add_song)
+add_btn.place(x=10, y=0)
 
-listbox = Listbox(tk, bg="black", fg="#9ad1ec", width=72,
-                  height=10, selectmode=SINGLE)
-style = ttk.Style()
-style.configure("TButton", padding=0, background="#ffffff", borderwidth=0)
-add_btn = ttk.Button(tk, text="Add song", command=add_song_from_yt)
 del_btn = ttk.Button(tk, text="Delete song", command=delete_song)
-play_btn = ttk.Button(tk, image=play_img, command=play, style="TButton")
-stop_btn = ttk.Button(tk, image=stop_img, command=stop_song)
-previous_btn = ttk.Button(tk, image=previous_img, command=previous_song)
-next_btn = ttk.Button(tk, image=next_img, command=next_song)
+del_btn.place(x=90, y=0)
+
+search_entry = ttk.Entry(tk)
+search_entry.place(x=300, y=2)
+search_entry.bind("<Return>", search_song)
+
 search_btn = ttk.Button(tk, text="search", command=search_song)
-style = ttk.Style()
-style.configure("TScale", background="white")
+search_btn.place(x=430, y=0)
+
+listbox = Listbox(tk, bg="black", fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
+                      selectmode=SINGLE)
+listbox.place(x=10, y=30)
+
+play_btn = ttk.Button(tk, image=play_img, command=play, style="TButton")
+play_btn.place(x=160, y=230)
+
+stop_btn = ttk.Button(tk, image=stop_img, command=stop_song)
+stop_btn.place(x=260, y=230)
+
+previous_btn = ttk.Button(tk, image=previous_img, command=previous_song)
+previous_btn.place(x=60, y=230)
+
+next_btn = ttk.Button(tk, image=next_img, command=next_song)
+next_btn.place(x=360, y=230)
+
+
+
+style = ttk.Style().configure("TScale", background="white")
+time_control = ttk.Scale(tk, from_=0, style="TScale", command=slide, length=350)
+time_control.place(x=50, y=200)
+
+current_second_label = ttk.Label(tk, text="00:00", background="white")
+current_second_label.place(x=10, y=203)
+
+song_length_label = ttk.Label(tk, text="00:00", background="white")
+song_length_label.place(x=404, y=203)
+
+
+
+
+
+# VOLUME
+
+
 volume_label = ttk.Label(tk, text="Volume", background="white")
+volume_label.place(x=520, y=0)
+
 label_0 = ttk.Label(tk, text="0", background="white")
+label_0.place(x=538, y=20)
+
 label_100 = ttk.Label(tk, text="100", background="white")
+label_100.place(x=530, y=180)
+
 volume_control = ttk.Scale(tk, from_=0, to=100, style="TScale", orient=VERTICAL, value=100, length=145,
                            command=lambda x: pygame.mixer.music.set_volume(volume_control.get() / 100))
-time_control = ttk.Scale(tk, from_=0, style="TScale", command=slide, length=350)
-current_second_label = ttk.Label(tk, text="00:00", background="white")
-song_length_label = ttk.Label(tk, text="00:00", background="white")
-search_entry = ttk.Entry(tk)
+volume_control.place(x=530, y=35)
 
-del_btn.place(x=90, y=0)
-add_btn.place(x=10, y=0)
-search_entry.place(x=170, y=0)
-search_btn.place(x=300, y=0)
-listbox.place(x=10, y=30)
-play_btn.place(x=160, y=230)
-stop_btn.place(x=260, y=230)
-previous_btn.place(x=60, y=230)
-next_btn.place(x=360, y=230)
-volume_label.place(x=450, y=0)
-label_0.place(x=468, y=20)
-label_100.place(x=460, y=180)
-volume_control.place(x=460, y=35)
-time_control.place(x=50, y=200)
-current_second_label.place(x=10, y=203)
-song_length_label.place(x=404, y=203)
 
 
 tk.mainloop()
