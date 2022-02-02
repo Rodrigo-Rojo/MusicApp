@@ -7,6 +7,7 @@ import pygame
 from moviepy.editor import *
 from pytube import YouTube
 from pyyoutube import Api
+from pytube.exceptions import LiveStreamError, RegexMatchError
 
 # <a href="https://www.flaticon.com/free-icons/ui" title="ui icons">Ui icons created by pictranoosa - Flaticon</a>
 
@@ -24,9 +25,8 @@ song = ""
 
 
 def update(restart=False):
-    global song
-    song_data = MP3(song)
-    song_length = song_data.info.length
+    global song, pause
+    song_length = MP3(song).info.length
     current_time = pygame.mixer.music.get_pos() / 1000
     song_length_converted = datetime.timedelta(seconds=int(song_length))
     if pygame.mixer.music.get_pos() / 1000 < 0 or restart:
@@ -43,12 +43,13 @@ def update(restart=False):
         time_control.config(to=song_length, value=current_time)
     else:
         time_control.config(to=song_length, value=time_control.get())
-        current_time_converted = datetime.timedelta(seconds=int(time_control.get()))
+        current_time_converted = datetime.timedelta(
+            seconds=int(time_control.get()))
         current_second_label.config(text=current_time_converted)
         song_length_label.config(text=song_length_converted)
         next_time = time_control.get() + 1
         time_control.config(value=next_time)
-    time_control.after(1200, update)
+    time_control.after(1000, update)
 
 
 def slide(x):
@@ -63,7 +64,8 @@ def add_song():
     filetypes = (
         ("mp3 files", "*.mp3"),
     )
-    filename = filedialog.askopenfilenames(title="Find one or multiples mp3 files.", initialdir="/Documents/MusicApp/audio/", filetypes=filetypes)
+    filename = filedialog.askopenfilenames(
+        title="Find one or multiples mp3 files.", initialdir="/Documents/MusicApp/audio/", filetypes=filetypes)
     for i in filename:
         songs_path.append(i)
         songs.append(os.path.basename(i))
@@ -98,6 +100,8 @@ def delete_song():
 
 def mixer_play_song(song):
     global pause
+    pygame.mixer.stop()
+    update(restart=True)
     pygame.mixer.music.load(song)
     pygame.mixer.music.play()
     update()
@@ -105,7 +109,7 @@ def mixer_play_song(song):
     pause = False
 
 
-def play():
+def play(event=None):
     global pause, song
     if len(songs) == 0:
         return
@@ -115,7 +119,7 @@ def play():
             if song in songs_path[i]:
                 song = songs_path[i]
         mixer_play_song(song)
-    if pygame.mixer.music.get_pos() > 1:
+    if pygame.mixer.music.get_pos() > 1 or event:
         if pause:
             pygame.mixer.music.unpause()
             pause = False
@@ -124,6 +128,13 @@ def play():
             pause = True
             pygame.mixer.music.pause()
             play_btn.config(image=play_img)
+
+
+def play_selected_song(event=None):
+    global song
+    for i in listbox.curselection():
+        song = songs_path[i]
+    mixer_play_song(song)
 
 
 def next_song():
@@ -155,26 +166,44 @@ def stop_song():
 
 
 def add_song_from_yt(youtube_ids):
-    global listbox
+    global listbox, progress_bar
+    progress = 100 / len(youtube_ids)
     for yt_id in youtube_ids:
         yt = YouTube(f"https://www.youtube.com/watch?v={yt_id}")
-        itag = yt.streams.filter(only_audio=True)[-1].itag
-        yt = yt.streams.get_by_itag(itag)
-        yt_song = yt.download()
-        # snd = AudioFileClip(yt_song)
-        # song_name = f"audio/{os.path.basename(yt_song)[:-4]}.mp3"
-        # snd.write_audiofile(filename=song_name)
-        songs_path.append(yt_song)
-        songs.append(os.path.basename(yt_song))
-        # os.remove(yt_song)
-    listbox = Listbox(tk, bg="black", fg="#9ad1ec", width=72, height=10, listvariable=StringVar(value=songs),
+        progress_bar["value"] += progress
+        description = ttk.Label(tk, text=f"Getting ready: {yt.title}")
+        description.place(x=100, y=50)
+        tk.update_idletasks()
+        try:
+            itag = yt.streams.filter(only_audio=True)[0].itag
+            yt = yt.streams.get_by_itag(itag)
+            yt_song = yt.download()
+
+            snd = AudioFileClip(yt_song)
+            song_name = f"audio/{os.path.basename(yt_song)[:-4]}.mp3"
+            snd.write_audiofile(filename=song_name)
+            songs_path.append(song_name)
+            songs.append(os.path.basename(song_name))
+            os.remove(yt_song)
+            description.destroy()
+        except LiveStreamError:
+            tk.showerror(title=f"Error {LiveStreamError}",
+                         message=f"There was an error while getting {yt.title}.")
+        except RegexMatchError:
+            tk.showerror(title=f"Error {RegexMatchError}",
+                         message=f"There was an error while getting {yt.title}.")
+    listbox = Listbox(tk, bg="black", fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
                       selectmode=SINGLE)
     listbox.select_set(0)
     listbox.place(x=10, y=30)
+    progress_bar.destroy()
 
 
 def handle_add():
-    global search_box, yt_window
+    global search_box, yt_window, progress_bar
+    progress_bar = ttk.Progressbar(
+        tk, orient=HORIZONTAL, length=300, mode="determinate")
+    progress_bar.place(x=150, y=100)
     selected_songs.append(search_box.curselection())
     yt_window.destroy()
     add_yt_songs()
@@ -205,8 +234,7 @@ def search_song(event=None):
 
 
 def add_yt_songs():
-    global selected_songs
-    print(selected_songs)
+    global selected_songs, progress_bar
     api = Api(api_key=API_KEY)
     search = api.search_by_keywords(q=search_entry.get(), count=10)
     yt_ids = [search.items[i].id.videoId for i in selected_songs[0]]
@@ -218,6 +246,7 @@ pause_img = ImageTk.PhotoImage(Image.open("img/pause.png"))
 stop_img = ImageTk.PhotoImage(Image.open("img/stop.png"))
 previous_img = ImageTk.PhotoImage(Image.open("img/previous.png"))
 next_img = ImageTk.PhotoImage(Image.open("img/next.png"))
+
 
 add_btn = ttk.Button(tk, text="Add song", command=add_song)
 add_btn.place(x=10, y=0)
@@ -233,8 +262,9 @@ search_btn = ttk.Button(tk, text="search", command=search_song)
 search_btn.place(x=430, y=0)
 
 listbox = Listbox(tk, bg="black", fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
-                      selectmode=SINGLE)
+                  selectmode=SINGLE)
 listbox.place(x=10, y=30)
+listbox.bind('<Double-1>', play_selected_song)
 
 play_btn = ttk.Button(tk, image=play_img, command=play, style="TButton")
 play_btn.place(x=160, y=230)
@@ -248,10 +278,9 @@ previous_btn.place(x=60, y=230)
 next_btn = ttk.Button(tk, image=next_img, command=next_song)
 next_btn.place(x=360, y=230)
 
-
-
 style = ttk.Style().configure("TScale", background="white")
-time_control = ttk.Scale(tk, from_=0, style="TScale", command=slide, length=350)
+time_control = ttk.Scale(tk, from_=0, style="TScale",
+                         command=slide, length=350)
 time_control.place(x=50, y=200)
 
 current_second_label = ttk.Label(tk, text="00:00", background="white")
@@ -260,26 +289,23 @@ current_second_label.place(x=10, y=203)
 song_length_label = ttk.Label(tk, text="00:00", background="white")
 song_length_label.place(x=404, y=203)
 
-
-
-
-
-# VOLUME
-
-
 volume_label = ttk.Label(tk, text="Volume", background="white")
-volume_label.place(x=520, y=0)
+volume_label.place(x=520, y=27)
 
 label_0 = ttk.Label(tk, text="0", background="white")
-label_0.place(x=538, y=20)
+label_0.place(x=538, y=45)
 
 label_100 = ttk.Label(tk, text="100", background="white")
 label_100.place(x=530, y=180)
 
-volume_control = ttk.Scale(tk, from_=0, to=100, style="TScale", orient=VERTICAL, value=100, length=145,
+volume_control = ttk.Scale(tk,
+                           from_=0, to=100,
+                           style="TScale",
+                           orient=VERTICAL,
+                           value=100, length=120,
                            command=lambda x: pygame.mixer.music.set_volume(volume_control.get() / 100))
-volume_control.place(x=530, y=35)
+volume_control.place(x=530, y=60)
 
-
+tk.bind("<space>", play)
 
 tk.mainloop()
