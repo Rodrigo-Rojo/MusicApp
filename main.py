@@ -12,20 +12,22 @@ from pytube.exceptions import LiveStreamError, RegexMatchError
 # <a href="https://www.flaticon.com/free-icons/ui" title="ui icons">Ui icons created by pictranoosa - Flaticon</a>
 
 tk = Tk()
+tk.tk.call("source", "sun-valley.tcl")
+tk.tk.call("set_theme", "dark")
 tk.title("Music App")
-tk.geometry("600x310")
-tk.configure(bg="white")
-tk.resizable(False, False)
-pygame.mixer.init()
+tk.geometry("700x400")
+# tk.resizable(False, False)
 API_KEY = "AIzaSyA82pzJpJMQ9mWS1TrFDRtjGAcw6ZhMCWM"
+if not os.path.exists("audio"):
+    os.makedirs("audio")
 songs = [file for file in os.listdir("audio")]
 songs_path = [os.path.abspath(f"audio/{file}") for file in os.listdir("audio")]
-pause = False
+paused = False
 song = ""
 
 
 def update(restart=False):
-    global song, pause
+    global song, paused
     song_length = MP3(song).info.length
     current_time = pygame.mixer.music.get_pos() / 1000
     song_length_converted = datetime.timedelta(seconds=int(song_length))
@@ -33,7 +35,7 @@ def update(restart=False):
         current_time = 0
         time_control.config(to=song_length, value=current_time)
         if restart:
-            play_btn.config(image=pause_img)
+            play_btn.config(image=paused_img)
         else:
             play_btn.config(image=play_img)
         current_time_converted = datetime.timedelta(seconds=current_time)
@@ -60,7 +62,7 @@ def slide(x):
 
 
 def add_song():
-    global listbox
+    global song_box
     filetypes = (
         ("mp3 files", "*.mp3"),
     )
@@ -69,70 +71,81 @@ def add_song():
     for i in filename:
         songs_path.append(i)
         songs.append(os.path.basename(i))
-    listbox = Listbox(tk, bg="black", fg="#9ad1ec", width=72, height=10, listvariable=StringVar(value=songs),
-                      selectmode=SINGLE)
-    listbox.select_set(0)
-    listbox.place(x=10, y=30)
+    song_box = Listbox(tk, bg="black", fg="#9ad1ec", width=72, height=10, listvariable=StringVar(value=songs),
+                       selectmode=SINGLE)
+    song_box.select_set(0)
+    song_box.place(x=10, y=50)
 
 
 def delete_song():
-    global listbox, song
+    global song_box, song
     if len(songs) == 0:
         return
-    selected_song = listbox.get(ACTIVE)
+    selected_song = song_box.get(ACTIVE)
     for i, song in enumerate(songs_path):
         if selected_song in song:
             songs_path.remove(songs_path[i])
             songs.remove(selected_song)
             item = i
-    listbox = Listbox(tk, bg="black", fg="#9ad1ec", width=72, height=10, listvariable=StringVar(value=songs),
-                      selectmode=SINGLE)
+    song_box = Listbox(tk, bg="black", fg="#9ad1ec", width=72, height=10, listvariable=StringVar(value=songs),
+                       selectmode=SINGLE)
     if selected_song not in songs:
         if len(songs) > 0 and len(songs) > item:
-            listbox.select_set(item)
+            song_box.select_set(item)
         else:
-            listbox.select_set(item - 1)
+            song_box.select_set(item - 1)
     stop_song()
-    listbox.place(x=10, y=30)
+    song_box.place(x=10, y=50)
     play()
     update(restart=True)
 
 
 def mixer_play_song(song):
-    global pause
+    global paused, stopped
     pygame.mixer.stop()
     update(restart=True)
     pygame.mixer.music.load(song)
     pygame.mixer.music.play()
     update()
-    play_btn.config(image=pause_img)
-    pause = False
+    play_btn.config(image=paused_img)
+    paused = False
+    stopped = False
+    is_over()
+
+
+def is_over():
+    global stopped, paused
+    if not pygame.mixer.music.get_busy() and not stopped and not paused:
+        next_song()
+    tk.after(1000, is_over)
 
 
 def play(event=None):
-    global pause, song
+    global paused, song
     if len(songs) == 0:
         return
     if not pygame.mixer.music.get_busy() and pygame.mixer.music.get_pos() < 0:
-        song = listbox.get(ACTIVE)
+        song = song_box.get(ACTIVE)
+        song_box.select_set(ACTIVE)
+
         for i in range(len(songs)):
             if song in songs_path[i]:
                 song = songs_path[i]
         mixer_play_song(song)
     if pygame.mixer.music.get_pos() > 1 or event:
-        if pause:
+        if paused:
             pygame.mixer.music.unpause()
-            pause = False
-            play_btn.config(image=pause_img)
+            paused = False
+            play_btn.config(image=paused_img)
         else:
-            pause = True
+            paused = True
             pygame.mixer.music.pause()
             play_btn.config(image=play_img)
 
 
 def play_selected_song(event=None):
     global song
-    for i in listbox.curselection():
+    for i in song_box.curselection():
         song = songs_path[i]
     mixer_play_song(song)
 
@@ -143,8 +156,8 @@ def next_song():
         return
     if len(songs_path) - 1 > songs_path.index(song):
         song = songs_path.index(song) + 1
-        listbox.selection_clear(0, END)
-        listbox.select_set(song)
+        song_box.selection_clear(0, END)
+        song_box.select_set(song)
         song = songs_path[song]
     mixer_play_song(song)
 
@@ -155,18 +168,21 @@ def previous_song():
         return
     if 0 < songs_path.index(song):
         song = songs_path.index(song) + -1
-        listbox.selection_clear(0, END)
-        listbox.select_set(song)
+        song_box.selection_clear(0, END)
+        song_box.select_set(song)
         song = songs_path[song]
     mixer_play_song(song)
 
 
 def stop_song():
+    global stopped
     pygame.mixer.music.stop()
+    song_box.selection_clear(0, END)
+    stopped = True
 
 
 def add_song_from_yt(youtube_ids):
-    global listbox, progress_bar
+    global song_box, progress_bar
     progress = 100 / len(youtube_ids)
     for yt_id in youtube_ids:
         yt = YouTube(f"https://www.youtube.com/watch?v={yt_id}")
@@ -192,10 +208,11 @@ def add_song_from_yt(youtube_ids):
         except RegexMatchError:
             tk.showerror(title=f"Error {RegexMatchError}",
                          message=f"There was an error while getting {yt.title}.")
-    listbox = Listbox(tk, bg="black", fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
-                      selectmode=SINGLE)
-    listbox.select_set(0)
-    listbox.place(x=10, y=30)
+    song_box = Listbox(tk, bg="black", fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
+                       selectmode=SINGLE)
+    song_box.select_set(0)
+    song_box.place(x=10, y=50)
+
     progress_bar.destroy()
 
 
@@ -241,62 +258,79 @@ def add_yt_songs():
     add_song_from_yt(yt_ids)
 
 
+def volume(event):
+    global volume_control
+    current_volume = volume_control.get()
+    if event.keysym == "Up":
+        current_volume += 10
+    else:
+        current_volume -= 10
+    pygame.mixer.music.set_volume(current_volume / 100)
+    volume_control = ttk.Scale(tk,
+                               from_=0, to=100,
+                               style="TScale",
+                               orient=VERTICAL,
+                               value=current_volume, length=120,
+                               command=lambda x: pygame.mixer.music.set_volume(volume_control.get() / 100))
+    volume_control.place(x=630, y=93)
+
+
 play_img = ImageTk.PhotoImage(Image.open("img/play.png"))
-pause_img = ImageTk.PhotoImage(Image.open("img/pause.png"))
+paused_img = ImageTk.PhotoImage(Image.open("img/pause.png"))
 stop_img = ImageTk.PhotoImage(Image.open("img/stop.png"))
 previous_img = ImageTk.PhotoImage(Image.open("img/previous.png"))
 next_img = ImageTk.PhotoImage(Image.open("img/next.png"))
 
 
-add_btn = ttk.Button(tk, text="Add song", command=add_song)
+add_btn = ttk.Button(tk, text="Add Song", command=add_song)
 add_btn.place(x=10, y=0)
 
-del_btn = ttk.Button(tk, text="Delete song", command=delete_song)
-del_btn.place(x=90, y=0)
+del_btn = ttk.Button(tk, text="Delete Song", command=delete_song)
+del_btn.place(x=110, y=0)
 
 search_entry = ttk.Entry(tk)
-search_entry.place(x=300, y=2)
+search_entry.place(x=270, y=0)
 search_entry.bind("<Return>", search_song)
 
-search_btn = ttk.Button(tk, text="search", command=search_song)
-search_btn.place(x=430, y=0)
+search_btn = ttk.Button(tk, text="Search Online Songs", command=search_song)
+search_btn.place(x=440, y=0)
 
-listbox = Listbox(tk, bg="black", fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
-                  selectmode=SINGLE)
-listbox.place(x=10, y=30)
-listbox.bind('<Double-1>', play_selected_song)
+song_box = Listbox(tk, fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
+                   selectmode=SINGLE)
+song_box.place(x=10, y=50)
+song_box.bind('<Double-1>', play_selected_song)
 
-play_btn = ttk.Button(tk, image=play_img, command=play, style="TButton")
-play_btn.place(x=160, y=230)
+play_btn = ttk.Button(tk, image=play_img, command=play)
+play_btn.place(x=170, y=280)
 
 stop_btn = ttk.Button(tk, image=stop_img, command=stop_song)
-stop_btn.place(x=260, y=230)
+stop_btn.place(x=270, y=280)
 
 previous_btn = ttk.Button(tk, image=previous_img, command=previous_song)
-previous_btn.place(x=60, y=230)
+previous_btn.place(x=70, y=280)
 
 next_btn = ttk.Button(tk, image=next_img, command=next_song)
-next_btn.place(x=360, y=230)
+next_btn.place(x=370, y=280)
 
-style = ttk.Style().configure("TScale", background="white")
+style = ttk.Style().configure("TScale")
 time_control = ttk.Scale(tk, from_=0, style="TScale",
                          command=slide, length=350)
-time_control.place(x=50, y=200)
+time_control.place(x=85, y=250)
 
-current_second_label = ttk.Label(tk, text="00:00", background="white")
-current_second_label.place(x=10, y=203)
+current_second_label = ttk.Label(tk, text="00:00")
+current_second_label.place(x=35, y=253)
 
-song_length_label = ttk.Label(tk, text="00:00", background="white")
-song_length_label.place(x=404, y=203)
+song_length_label = ttk.Label(tk, text="00:00")
+song_length_label.place(x=449, y=253)
 
-volume_label = ttk.Label(tk, text="Volume", background="white")
-volume_label.place(x=520, y=27)
+volume_label = ttk.Label(tk, text="Volume")
+volume_label.place(x=620, y=50)
 
-label_0 = ttk.Label(tk, text="0", background="white")
-label_0.place(x=538, y=45)
+label_0 = ttk.Label(tk, text="0")
+label_0.place(x=638, y=68)
 
-label_100 = ttk.Label(tk, text="100", background="white")
-label_100.place(x=530, y=180)
+label_100 = ttk.Label(tk, text="100")
+label_100.place(x=630, y=215)
 
 volume_control = ttk.Scale(tk,
                            from_=0, to=100,
@@ -304,8 +338,10 @@ volume_control = ttk.Scale(tk,
                            orient=VERTICAL,
                            value=100, length=120,
                            command=lambda x: pygame.mixer.music.set_volume(volume_control.get() / 100))
-volume_control.place(x=530, y=60)
+volume_control.place(x=630, y=93)
 
 tk.bind("<space>", play)
+tk.bind("<Up>", volume)
+tk.bind("<Down>", volume)
 
 tk.mainloop()
