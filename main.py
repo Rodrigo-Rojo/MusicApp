@@ -10,16 +10,14 @@ import pygame
 from moviepy.editor import *
 from pytube import YouTube
 from pyyoutube import Api
-import re
-
-# <a href="https://www.flaticon.com/free-icons/ui" title="ui icons">Ui icons created by pictranoosa - Flaticon</a>
-
+import os
 tk = Tk()
-tk.tk.call("source", "sun-valley.tcl")
+tk.iconbitmap(r"D:\Documents\MusicApp\img\mp3-player.ico")
+tk.tk.call("source", r"D:\Documents\MusicApp\sun-valley.tcl")
 tk.tk.call("set_theme", "dark")
 tk.title("Music App")
 tk.geometry("700x400")
-# tk.resizable(False, False)
+tk.resizable(False, False)
 API_KEY = "AIzaSyA82pzJpJMQ9mWS1TrFDRtjGAcw6ZhMCWM"
 if not os.path.exists("audio"):
     os.makedirs("audio")
@@ -27,18 +25,8 @@ songs = [file for file in os.listdir("audio")]
 songs_path = [os.path.abspath(f"audio/{file}") for file in os.listdir("audio")]
 paused = False
 song = ""
+stopped = False
 
-for file in songs:
-    str_to_remove = re.findall('\[.*?]', file)[0]
-    str_to_remove2 = re.findall(r'.*?\[(.*)].*', file)
-    if "(" in file or ")" in file:
-        if str_to_remove[0] in file:
-            os.rename(f"audio/{file}", f"audio/{file.replace(str_to_remove[0], '')}")
-    if "[" in file:
-        if str_to_remove2[0] in file:
-            os.rename(f"audio/{file}", f"audio/{file.replace(str_to_remove2[0], '')}")
-
-song = song[song.find("(")+1:song.find(")")]
 
 def update(restart=False):
     global song, paused
@@ -81,14 +69,16 @@ def add_song():
         ("mp3 files", "*.mp3"),
     )
     filename = filedialog.askopenfilenames(
-        title="Find one or multiples mp3 files.", initialdir="/Documents/MusicApp/audio/", filetypes=filetypes)
+        title="Find one or multiples mp3 files.", initialdir="/", filetypes=filetypes)
     for i in filename:
         songs_path.append(i)
         songs.append(os.path.basename(i))
-    song_box = Listbox(tk, bg="black", fg="#9ad1ec", width=72, height=10, listvariable=StringVar(value=songs),
+    Label(tk, text=f"Showing 10 songs of {len(songs)} you can scroll.").place(x=200, y=50)
+    song_box = Listbox(tk, fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
                        selectmode=SINGLE)
+    song_box.place(x=10, y=70)
     song_box.select_set(0)
-    song_box.place(x=10, y=50)
+    song_box.bind('<Double-1>', play_selected_song)
 
 
 def delete_song():
@@ -101,7 +91,8 @@ def delete_song():
             songs_path.remove(songs_path[i])
             songs.remove(selected_song)
             item = i
-    song_box = Listbox(tk, bg="black", fg="#9ad1ec", width=72, height=10, listvariable=StringVar(value=songs),
+    Label(tk, text=f"Showing 10 songs of {len(songs)} you can scroll.").place(x=200, y=50)
+    song_box = Listbox(tk, fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
                        selectmode=SINGLE)
     if selected_song not in songs:
         if len(songs) > 0 and len(songs) > item:
@@ -109,7 +100,8 @@ def delete_song():
         else:
             song_box.select_set(item - 1)
     stop_song()
-    song_box.place(x=10, y=50)
+    song_box.place(x=10, y=70)
+    song_box.bind('<Double-1>', play_selected_song)
     play()
     update(restart=True)
 
@@ -159,9 +151,10 @@ def play(event=None):
 
 def play_selected_song(event=None):
     global song
-    for i in song_box.curselection():
-        song = songs_path[i]
-    mixer_play_song(song)
+    if event:
+        for i in song_box.curselection():
+            song = songs_path[i]
+        mixer_play_song(song)
 
 
 def next_song():
@@ -197,13 +190,17 @@ def stop_song():
 
 def shuffle():
     global song_box, songs, songs_path
+    stop_song()
     both = list(zip(songs, songs_path))
     random.shuffle(both)
     songs, songs_path = zip(*both)
-    song_box = Listbox(tk, bg="black", fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
+    songs = list(songs)
+    songs_path = list(songs_path)
+    Label(tk, text=f"Showing 10 songs of {len(songs)} you can scroll.").place(x=200, y=50)
+    song_box = Listbox(tk, fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
                        selectmode=SINGLE)
     song_box.select_set(0)
-    song_box.place(x=10, y=50)
+    song_box.place(x=10, y=70)
     song_box.bind('<Double-1>', play_selected_song)
     play()
 
@@ -211,6 +208,8 @@ def shuffle():
 def add_song_from_yt(youtube_ids):
     global song_box, progress_bar
     progress = 100 / len(youtube_ids)
+    loading_label = Label(tk, text=f"Loading...")
+    loading_label.place(x=250, y=120)
     for yt_id in youtube_ids:
         progress_bar["value"] += progress
         tk.update_idletasks()
@@ -230,11 +229,13 @@ def add_song_from_yt(youtube_ids):
             showerror(title=f"Error:", message=f"There was an error while getting your song.\n{e}.").pack()
         except pytube.exceptions.RegexMatchError as e:
             showerror(title=f"Error:", message=f"There was an error while getting your song.\n{e}.").pack()
-    song_box = Listbox(tk, bg="black", fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
+    Label(tk, text=f"Showing 10 songs of {len(songs)} you can scroll.").place(x=200, y=50)
+    song_box = Listbox(tk, fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
                        selectmode=SINGLE)
     song_box.select_set(0)
-    song_box.place(x=10, y=50)
-
+    song_box.place(x=10, y=70)
+    song_box.bind('<Double-1>', play_selected_song)
+    loading_label.destroy()
     progress_bar.destroy()
 
 
@@ -255,12 +256,13 @@ def open_win(video_list):
     yt_window.geometry("500x250")
     yt_window.title("Songs")
     search_box = Listbox(yt_window, fg="#9ad1ec", width=72,
-                         listvariable=StringVar(value=video_list), selectmode=EXTENDED)
+                         listvariable=StringVar(value=video_list), selectmode=SINGLE)
     search_box.place(x=0, y=30)
-    Label(yt_window, text=f"Select one or multiple songs to keep in the app showing {len(video_list)} you can scroll.").pack()
+    Label(yt_window,
+          text=f"Select one or multiple songs to keep in the app showing {len(video_list)} you can scroll.").pack()
     add = Button(yt_window, text="Add Songs", command=handle_add)
-    quit = Button(yt_window, text="Close Window", command=yt_window.destroy)
-    quit.place(x=250, y=220)
+    close = Button(yt_window, text="Close Window", command=yt_window.destroy)
+    close.place(x=250, y=220)
     add.place(x=150, y=220)
 
 
@@ -298,13 +300,37 @@ def volume(event):
     volume_control.place(x=630, y=93)
 
 
-play_img = ImageTk.PhotoImage(Image.open("img/play.png"))
-paused_img = ImageTk.PhotoImage(Image.open("img/pause.png"))
-stop_img = ImageTk.PhotoImage(Image.open("img/stop.png"))
-previous_img = ImageTk.PhotoImage(Image.open("img/previous.png"))
-next_img = ImageTk.PhotoImage(Image.open("img/next.png"))
-shuffle_img = ImageTk.PhotoImage(Image.open("img/shuffle.png"))
+def handle_help():
+    help_window = Toplevel(tk)
+    help_window.geometry("700x350")
+    help_window.title("Help")
+    ttk.Button(help_window, text="Add Song").place(x=10, y=10)
+    Label(help_window, text="Click add song button to search for mp3 files to add them to the playlist.").place(x=170, y=15)
+    ttk.Button(help_window, text="Remove Song").place(x=10, y=50)
+    Label(help_window, text="Select a song from the list and click button Remove Song to remove song\n from playlist.").place(x=170, y=55)
+    e = ttk.Entry(help_window)
+    e.insert(0, "Song Name...")
+    e.place(x=10, y=105)
+    ttk.Button(help_window, text="Search Online Songs").place(x=10, y=145)
+    Label(help_window, text="You have to option to search youtube songs, Use the Entry to search for").place(x=170, y=95)
+    Label(help_window, text="any song you wish, press Enter or press 'Search Online Songs'").place(x=170, y=115)
+    Label(help_window, text="once you do another window will open with a playlist showing the first").place(x=170, y=135)
+    Label(help_window, text="25 options available, select one or many then proceed to click 'Add Songs'").place(x=170, y=155)
+    Label(help_window, text="after the app will proceed to download selected songs.").place(x=170, y=175)
+    Listbox(help_window, fg="#9ad1ec", width=15, height=4, listvariable=StringVar(value=[f"Song {i}" for i in range(10)]),
+            selectmode=SINGLE).place(x=10, y=215)
+    Label(help_window, text="You can select a single song from listbox then click ▶ button to play selected song").place(x=170, y=220)
+    Label(help_window, text="Or you can double click on a song this will play the selected song.").place(x=170, y=240)
+    Label(help_window, text="Sometimes you will have more items that listbox shows you can scroll.").place(x=170, y=260)
 
+
+
+play_img = ImageTk.PhotoImage(Image.open(r"D:\Documents\MusicApp\img\play.png"))
+paused_img = ImageTk.PhotoImage(Image.open(r"D:\Documents\MusicApp\img\pause.png"))
+stop_img = ImageTk.PhotoImage(Image.open(r"D:\Documents\MusicApp\img\stop.png"))
+previous_img = ImageTk.PhotoImage(Image.open(r"D:\Documents\MusicApp\img\previous.png"))
+next_img = ImageTk.PhotoImage(Image.open(r"D:\Documents\MusicApp\img\next.png"))
+shuffle_img = ImageTk.PhotoImage(Image.open(r"D:\Documents\MusicApp\img\shuffle.png"))
 
 add_btn = ttk.Button(tk, text="Add Song", command=add_song)
 add_btn.place(x=10, y=10)
@@ -314,44 +340,46 @@ del_btn.place(x=110, y=10)
 
 search_entry = ttk.Entry(tk)
 search_entry.place(x=270, y=10)
+search_entry.insert(0, "Search Youtube Songs")
 search_entry.bind("<Return>", search_song)
 
 search_btn = ttk.Button(tk, text="Search Online Songs", command=search_song)
 search_btn.place(x=440, y=10)
 
-playlist_btn = ttk.Button(tk, text="Playlists", command=None)
-playlist_btn.place(x=600, y=10)
+help_btn = ttk.Button(tk, text="Help", command=handle_help)
+help_btn.place(x=630, y=10)
 
+Label(tk, text=f"Showing 10 songs of {len(songs)} you can scroll.").place(x=200, y=50)
 song_box = Listbox(tk, fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
                    selectmode=SINGLE)
-song_box.place(x=10, y=50)
+song_box.place(x=10, y=70)
 song_box.bind('<Double-1>', play_selected_song)
 
 play_btn = ttk.Button(tk, image=play_img, command=play)
-play_btn.place(x=150, y=280)
+play_btn.place(x=150, y=300)
 
 stop_btn = ttk.Button(tk, image=stop_img, command=stop_song)
-stop_btn.place(x=250, y=280)
+stop_btn.place(x=250, y=300)
 
 previous_btn = ttk.Button(tk, image=previous_img, command=previous_song)
-previous_btn.place(x=50, y=280)
+previous_btn.place(x=50, y=300)
 
 next_btn = ttk.Button(tk, image=next_img, command=next_song)
-next_btn.place(x=350, y=280)
+next_btn.place(x=350, y=300)
 
 shuffle_btn = ttk.Button(tk, image=shuffle_img, command=shuffle)
-shuffle_btn.place(x=450, y=280)
+shuffle_btn.place(x=450, y=300)
 
 style = ttk.Style().configure("TScale")
 time_control = ttk.Scale(tk, from_=0, style="TScale",
                          command=slide, length=350)
-time_control.place(x=120, y=250)
+time_control.place(x=120, y=270)
 
 current_second_label = ttk.Label(tk, text="00:00")
-current_second_label.place(x=70, y=253)
+current_second_label.place(x=70, y=273)
 
 song_length_label = ttk.Label(tk, text="00:00")
-song_length_label.place(x=485, y=253)
+song_length_label.place(x=485, y=273)
 
 volume_label = ttk.Label(tk, text="Volume")
 volume_label.place(x=620, y=50)
@@ -362,11 +390,7 @@ label_0.place(x=638, y=68)
 label_100 = ttk.Label(tk, text="100")
 label_100.place(x=630, y=215)
 
-volume_control = ttk.Scale(tk,
-                           from_=0, to=100,
-                           style="TScale",
-                           orient=VERTICAL,
-                           value=100, length=120,
+volume_control = ttk.Scale(tk, from_=0, to=100, style="TScale", orient=VERTICAL, value=50, length=120,
                            command=lambda x: pygame.mixer.music.set_volume(volume_control.get() / 100))
 volume_control.place(x=630, y=93)
 
@@ -374,4 +398,5 @@ play_btn.bind("<space>", play)
 tk.bind("<Up>", volume)
 tk.bind("<Down>", volume)
 
-tk.mainloop()
+if __name__ == "__main__":
+    tk.mainloop()
