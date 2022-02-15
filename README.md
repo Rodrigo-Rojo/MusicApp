@@ -21,19 +21,19 @@ more about it.
 I used pytube because I want it to be able to download 
 audio and play it locally.
 
-###mutagen:
+### mutagen:
 I used mutagen because I want it to show some metadata 
 from the mp3 files in the app.
 
-###pygame:
+### pygame:
 I used pygame mixer is one of the options to play music and it has access to controls
 like adjusting the volume or pausing the song etc...
 
-###moviepy:
+### moviepy:
 I used moviepy because I need it to convert the songs that 
 I was getting from pytube they are never mp3 files.
 
-###pyyoutube:
+### pyyoutube:
 I used pyyoutube while trying to use pytube I need it to get the url
 from the videos that I want it to get, I tried to do scraping then
 had the problem that doing that in youtube.com is not possible and
