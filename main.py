@@ -73,7 +73,7 @@ def add_song():
     for i in filename:
         songs_path.append(i)
         songs.append(os.path.basename(i))
-    Label(tk, text=f"Showing 10 songs of {len(songs)} you can scroll.").place(x=200, y=50)
+
     song_box = Listbox(tk, fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
                        selectmode=SINGLE)
     song_box.place(x=10, y=70)
@@ -91,7 +91,7 @@ def delete_song():
             songs_path.remove(songs_path[i])
             songs.remove(selected_song)
             item = i
-    Label(tk, text=f"Showing 10 songs of {len(songs)} you can scroll.").place(x=200, y=50)
+
     song_box = Listbox(tk, fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
                        selectmode=SINGLE)
     if selected_song not in songs:
@@ -196,7 +196,7 @@ def shuffle():
     songs, songs_path = zip(*both)
     songs = list(songs)
     songs_path = list(songs_path)
-    Label(tk, text=f"Showing 10 songs of {len(songs)} you can scroll.").place(x=200, y=50)
+
     song_box = Listbox(tk, fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
                        selectmode=SINGLE)
     song_box.select_set(0)
@@ -229,7 +229,7 @@ def add_song_from_yt(youtube_ids):
             showerror(title=f"Error:", message=f"There was an error while getting your song.\n{e}.").pack()
         except pytube.exceptions.RegexMatchError as e:
             showerror(title=f"Error:", message=f"There was an error while getting your song.\n{e}.").pack()
-    Label(tk, text=f"Showing 10 songs of {len(songs)} you can scroll.").place(x=200, y=50)
+
     song_box = Listbox(tk, fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
                        selectmode=SINGLE)
     song_box.select_set(0)
@@ -349,7 +349,6 @@ search_btn.place(x=440, y=10)
 help_btn = ttk.Button(tk, text="Help", command=handle_help)
 help_btn.place(x=630, y=10)
 
-Label(tk, text=f"Showing 10 songs of {len(songs)} you can scroll.").place(x=200, y=50)
 song_box = Listbox(tk, fg="#9ad1ec", width=82, height=10, listvariable=StringVar(value=songs),
                    selectmode=SINGLE)
 song_box.place(x=10, y=70)
