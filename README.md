@@ -18,11 +18,10 @@ to me when I was first learning Python, also want it to refresh learn
 more about it.
 
 ### pytube:
-I used pytube because I want it to be able to download 
-audio and play it locally.
+I used pytube to be able to download audio and play it locally.
 
 ### mutagen:
-I used mutagen because I want it to show some metadata 
+I used mutagen to show some metadata 
 from the mp3 files in the app.
 
 ### pygame:
@@ -30,8 +29,7 @@ I used pygame mixer is one of the options to play music and it has access to con
 like adjusting the volume or pausing the song etc...
 
 ### moviepy:
-I used moviepy because I need it to convert the songs that 
-I was getting from pytube they are never mp3 files.
+I used moviepy because I need it to convert the songs that I was getting from pytube they are never mp3 files.
 
 ### pyyoutube:
 I used pyyoutube while trying to use pytube I need it to get the url
