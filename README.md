@@ -4,7 +4,7 @@ I got the idea of building a mp3 player from realpython.com,
 I want it to build a Desktop GUI app and after of looking on internet for ideas
 I found this idea in the website realpython.com
 
-### Modules Used:
+### Technologies Used:
 - tkinter
 - pytube
 - mutagen
